@@ -1,0 +1,4 @@
+bin/
+obj/
+csv2edassistant.v11.suo
+!bin/Release/csv2edassistant.exe

@@ -86,7 +86,7 @@
             // cancel
             // 
             this.cancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.cancel.Location = new System.Drawing.Point(341, 62);
+            this.cancel.Location = new System.Drawing.Point(341, 64);
             this.cancel.Name = "cancel";
             this.cancel.Size = new System.Drawing.Size(75, 23);
             this.cancel.TabIndex = 6;
@@ -107,7 +107,8 @@
             this.Controls.Add(this.browseEDA);
             this.Controls.Add(this.browseCSV);
             this.Name = "mainWindow";
-            this.Text = "CSV To EDASSISTANT";
+            this.Text = "CSV (firehose) To EDASSISTANT";
+            this.Load += new System.EventHandler(this.mainWindow_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -123,7 +124,8 @@
         private System.Windows.Forms.Button cancel;
         private csvData data;
         private bool fileWasCreated;
-        private stationSystemMap mapData;
+        private GameData outputData;
+        //private stationSystemMap mapData;
     }
 }
 

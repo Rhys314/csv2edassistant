@@ -93,6 +93,6 @@
         private System.Windows.Forms.Button ok;
         private System.Windows.Forms.Label stationName;
         private System.Windows.Forms.Button cancel;
-        private string startSystemNameValue;
+        //private string startSystemNameValue;
     }
 }

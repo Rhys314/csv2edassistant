@@ -28,7 +28,7 @@ namespace csv2edassistant
         {
             OpenFileDialog fdlg = new OpenFileDialog();
             fdlg.Title = "CSV File";
-            fdlg.InitialDirectory = @"c:\";
+            //fdlg.InitialDirectory = @"c:\";
             fdlg.Filter = "Comma Seperated Variable (*.csv)|*.csv";
             fdlg.FilterIndex = 2;
             fdlg.RestoreDirectory = true;
@@ -53,18 +53,33 @@ namespace csv2edassistant
         {
             SaveFileDialog fdlg = new SaveFileDialog();
             fdlg.Title = "EDAssistant File";
-            fdlg.InitialDirectory = @"c:\";
+            //fdlg.InitialDirectory = @"c:\";
             fdlg.Filter = "ED Trade Assistant (*.edassistant)|*.edassistant";
             fdlg.FilterIndex = 2;
+            fdlg.CheckFileExists = false;
+            fdlg.CreatePrompt = false;
+            fdlg.OverwritePrompt = false;
             fdlg.RestoreDirectory = true;
             if (fdlg.ShowDialog() == DialogResult.OK)
             {
                 edaFilename.Text = fdlg.FileName;
-                if (!File.Exists(edaFilename.Text))
+                if (!File.Exists(edaFilename.Text) || (new FileInfo( edaFilename.Text ).Length == 0 ))
                 {
+                    // Create new file.
                     FileStream newfile = File.Open(edaFilename.Text, FileMode.OpenOrCreate);
                     newfile.Close();
+                    outputData = new GameData();
                     fileWasCreated = true;
+                }
+                else
+                {
+                    // Deserialize XML data
+                    fileWasCreated = false;
+                    XmlSerializer deserializer = new XmlSerializer(typeof(GameData));
+                    TextReader reader = new StreamReader(edaFilename.Text);
+                    object obj = deserializer.Deserialize(reader);
+                    outputData = (GameData)obj;
+                    reader.Close();
                 }
             }
         }
@@ -73,13 +88,28 @@ namespace csv2edassistant
         {
             stationSystemMap map = new stationSystemMap();
             FileStream fileStream = File.Open(edaFilename.Text, FileMode.Open);
-            GameData outputData = new GameData();
             XmlSerializer serializer = new XmlSerializer(typeof(GameData));
-
             // get star system data to match stations
             for (int ii = 0; ii < data.stations.Count; ii++)
-            {                
-                string systemName = map.checkIfStationPresent(data.stations[ii].Name);
+            {
+                string systemName = map.checkIfStationPresent(data.stations[ii].CompleteName);
+                if (systemName.Length == 0)
+                    systemName = data.stations[ii].SystemName;
+                string stationName = data.stations[ii].Name;
+                if (systemName.Length == 0) 
+                {
+                    // Last Option, because name not found: Ask.
+                    starSystemNames_Input names = new starSystemNames_Input(data.stations[ii].CompleteName);
+                    if (names.ShowDialog(this) == DialogResult.OK)
+                        systemName = names.starSystemName.Text;
+                    data.stations[ii].SystemName = systemName;
+                    map.addSystemStation(outputData.StarSystems[ii].Name, data.stations[ii].CompleteName);
+                    names.Dispose();
+                }
+                // Ready to add/update the data.
+                Routines.AddOrUpdateStation(data, ii, outputData);
+
+                /*
                 // if the system the station is in has alread been defind use that...
                 if (systemName.Length > 0)
                 {
@@ -90,17 +120,38 @@ namespace csv2edassistant
                 // ...otherwise ask
                 else
                 {
-                    starSystemNames_Input names = new starSystemNames_Input(data.stations[ii].Name);
-                    if (names.ShowDialog(this) == DialogResult.OK)
+                    // Extract Station/System Name if possible
+                    if (data.stations[ii].Name.IndexOf("(") != -1 &&
+                        data.stations[ii].Name.IndexOf(")") != -1 &&
+                        data.stations[ii].Name.IndexOf("(") < data.stations[ii].Name.IndexOf(")"))
                     {
                         outputData.StarSystems.Add(new StarSystem());
-                        outputData.StarSystems[ii].Name = names.starSystemName.Text;
+                        // Extract System name
+                        outputData.StarSystems[ii].Name = data.stations[ii].Name.Substring(0, data.stations[ii].Name.IndexOf('(')).Trim();
+                        // Extract Station name
+                        data.stations[ii].Name = data.stations[ii].Name.Substring(
+                                data.stations[ii].Name.IndexOf('('),
+                                data.stations[ii].Name.IndexOf(')') - data.stations[ii].Name.IndexOf('(')
+                            ).Trim();
                         outputData.StarSystems[ii].Stations.Add(new Station(data.stations[ii]));
+                        map.addSystemStation(outputData.StarSystems[ii].Name, data.stations[ii].Name);
                     }
-                    // ...then add the system to the list
-                    map.addSystemStation(names.starSystemName.Text, data.stations[ii].Name);
-                    names.Dispose();
+                    else
+                    {
+                        // Last Option, because name not found: Ask.
+                        starSystemNames_Input names = new starSystemNames_Input(data.stations[ii].Name);
+                        if (names.ShowDialog(this) == DialogResult.OK)
+                        {
+                            outputData.StarSystems.Add(new StarSystem());
+                            outputData.StarSystems[ii].Name = names.starSystemName.Text;
+                            outputData.StarSystems[ii].Stations.Add(new Station(data.stations[ii]));
+                        }
+                        // ...then add the system to the list
+                        map.addSystemStation(outputData.StarSystems[ii].Name, data.stations[ii].Name);
+                        names.Dispose();
+                    }
                 }
+                */
             }
 
             // write game data to xml file
@@ -122,6 +173,11 @@ namespace csv2edassistant
             if (File.Exists(edaFilename.Text) && fileWasCreated) File.Delete(edaFilename.Text);
             this.DialogResult = DialogResult.Cancel;
             this.Close();
+        }
+
+        private void mainWindow_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }
